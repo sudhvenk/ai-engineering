@@ -1,0 +1,121 @@
+You are generating synthetic but realistic recreation center brochures
+to be used as ground-truth data for a Retrieval-Augmented Generation (RAG) system.
+
+Your task is to create EXACTLY 15 brochures, each saved as a separate Markdown (.md) file,
+representing recreation websites across the United States.
+
+Brochure distribution:
+- 3 Theatres
+- 7 YMCA locations
+- 5 Town Libraries
+
+Each brochure represents ONE recreation website.
+A website may support multiple activity categories, but must follow the constraints below.
+
+--------------------------------------------------
+GLOBAL CONSTRAINTS (VERY IMPORTANT)
+--------------------------------------------------
+1. Only THEATRES may offer movie-related events.
+2. LIBRARIES may NOT offer:
+   - swimming / aquatics
+   - movie screenings
+3. YMCA locations MAY offer:
+   - aquatics
+   - athletics
+   - dancing
+   - yoga
+   - limited arts or wellness classes
+4. All events MUST come ONLY from these category sources:
+   - aquatics.md
+   - athletics.md
+   - cooking.md
+   - dancing.md
+   - drawing.md
+   - movies.md
+5. Do NOT invent new activity categories outside those files.
+6. All data must be synthetic but realistic.
+
+--------------------------------------------------
+BROCHURE LENGTH & STRUCTURE
+--------------------------------------------------
+Each brochure must be approximately FIVE pages long in Markdown
+and follow this exact structure:
+
+PAGE 1 — CENTER OVERVIEW
+- Name of the center
+- Type (YMCA / Theatre / Library)
+- City, State (within the United States)
+- Description of the center’s mission, audience served, and facilities
+
+PAGE 2 — PROGRAM OVERVIEW
+- High-level overview of activity types offered at this center
+- Explain which categories are emphasized and why
+- Mention target audiences (families, adults, seniors, youth)
+
+PAGE 3 — EVENTS (SET 1)
+- Detailed event listings using allowed categories
+- Each event MUST include:
+  - Event name
+  - Category (from allowed .md files)
+  - Date range
+  - Days of week
+  - Time range
+  - Instructor or facilitator name
+  - Number of available spots
+
+PAGE 4 — EVENTS (SET 2)
+- Additional events (same structure as Page 3)
+- Ensure variety in:
+  - age suitability
+  - intensity level
+  - time of day (morning / evening / weekend)
+
+PAGE 5 — COMMUNITY & LOGISTICS
+- Registration notes
+- Accessibility considerations
+- Typical attendance size
+- Seasonal scheduling notes
+- Contact or inquiry information (synthetic)
+
+--------------------------------------------------
+SPECIAL RULES BY CENTER TYPE
+--------------------------------------------------
+THEATRES:
+- Must include movie-related events from movies.md
+- Should include:
+  - classic films
+  - foreign films
+  - documentaries
+  - film discussions or clubs
+- Must NOT include aquatics or athletics
+
+LIBRARIES:
+- Must include:
+  - drawing
+  - cooking
+  - lectures, discussions, workshops
+- Must NOT include:
+  - aquatics
+  - swimming
+  - movies
+
+YMCA:
+- May include:
+  - aquatics
+  - athletics
+  - dance
+  - yoga
+  - wellness programs
+- Should reflect fitness and community wellness focus
+
+--------------------------------------------------
+OUTPUT REQUIREMENTS
+--------------------------------------------------
+- Output EACH brochure as a separate Markdown file
+- Include a clear filename at the top of each brochure, e.g.:
+
+  File: ymca_cambridge.md
+
+- Do NOT include explanations or commentary outside the brochures
+- Do NOT summarize — generate full brochure content
+- Keep formatting clean and consistent for RAG ingestion
