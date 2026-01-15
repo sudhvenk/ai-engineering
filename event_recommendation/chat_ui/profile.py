@@ -6,11 +6,17 @@ from pydantic import BaseModel
 
 import groq
 import os
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    retry_if_exception,
+    retry_if_not_exception_type,
+)
 
-# Initialize Groq client
-groq_client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
-OPENSOURCE_OSS_MODEL = "openai/gpt-oss-120b"
-
+groq_client = None
+OPENSOURCE_OSS_MODEL = None
 
 class UserProfile(BaseModel):
     """User profile schema."""
@@ -63,13 +69,51 @@ If nothing can be updated, return:
 """.strip()
 
 
-def llm_call_profile(system_prompt: str, user_prompt: str) -> str:
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type((
+        groq.RateLimitError,          # Rate limit exceeded
+        groq.APIConnectionError,       # Connection issues
+        groq.APITimeoutError,          # Request timeout
+        groq.InternalServerError,      # Server errors (5xx)
+        ConnectionError,               # Python connection errors
+        TimeoutError,                  # Python timeout errors
+    )),
+    reraise=True,
+)
+def llm_call_profile(
+    system_prompt: str, 
+    user_prompt: str, 
+    groq_client=None,
+    model: str = "openai/gpt-oss-120b"
+) -> str:
     """
     Call LLM for profile extraction.
     Must return raw text containing ONLY JSON.
+    
+    Args:
+        system_prompt: System prompt for the LLM
+        user_prompt: User prompt for the LLM
+        groq_client: Groq client instance (if None, will be created)
+        model: Model name to use (default: "openai/gpt-oss-120b")
+        
+    Returns:
+        Raw text response from LLM containing JSON
+        
+    Raises:
+        groq.RateLimitError: If rate limit is exceeded after retries
+        groq.APIConnectionError: If connection fails after retries
+        groq.APITimeoutError: If request times out after retries
+        groq.InternalServerError: If server error occurs after retries
+        groq.APIError: If API returns a non-retryable error
     """
+    # Initialize Groq client if not provided
+    if groq_client is None:
+        groq_client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
+    
     resp = groq_client.chat.completions.create(
-        model=OPENSOURCE_OSS_MODEL,
+        model=model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},

@@ -13,6 +13,7 @@ from utils.normalizers import (
     normalize_intensity,
 )
 from utils.extractors import extract_age_range, extract_age_groups, infer_intensity_from_text
+from database.event_db import EventRecord
 
 
 # Regex patterns for parsing
@@ -236,4 +237,92 @@ def build_event_documents(
         )
 
     return docs
+
+
+def build_event_records(
+    md_text: str,
+    source: str,
+    activity_intensity_map: Optional[Dict[str, str]] = None,
+    city: Optional[str] = None,
+    state: Optional[str] = None,
+    center_name: Optional[str] = None,
+    center_type: Optional[str] = None,
+) -> List[EventRecord]:
+    """
+    Build EventRecord objects from markdown text for SQL database storage.
+    
+    Args:
+        md_text: Markdown text containing events
+        source: Source file name
+        activity_intensity_map: Map of event_type -> intensity
+        city: City name
+        state: State name
+        center_name: Center/venue name
+        center_type: Center type (YMCA, Library, etc.)
+        
+    Returns:
+        List of EventRecord objects
+    """
+    matches = list(_EVENT_BLOCK_RE.finditer(md_text))
+    if not matches:
+        return []
+
+    records: List[EventRecord] = []
+
+    for i, m in enumerate(matches):
+        event_name = m.group(1).strip()
+        start = m.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(md_text)
+        block = md_text[start:end].strip()
+
+        # Extract Event Type
+        event_type_raw = None
+        mt = re.search(r"(?mi)^\s*-\s*Event Type:\s*(.+?)\s*$", block)
+        if mt:
+            event_type_raw = mt.group(1).strip()
+
+        event_type = normalize_event_type(event_type_raw)
+
+        # Ages numeric + buckets
+        age_min, age_max = extract_age_range(block)
+        age_contains_list = extract_age_groups(block)
+        age_contains = ", ".join(age_contains_list) if age_contains_list else None
+
+        # Intensity: prefer map from activityType docs (keyed by normalized event_type)
+        intensity = None
+        if activity_intensity_map and event_type:
+            intensity = activity_intensity_map.get(event_type)
+        if not intensity:
+            intensity = infer_intensity_from_text(block)
+
+        # Extract additional fields
+        instructor = _safe_find2(FIELD_RE["instructor"], block)
+        date_range = _safe_find(FIELD_RE["date_range"], block)
+        time_slots = _safe_find(FIELD_RE["time_slots"], block)
+        duration = _safe_find(FIELD_RE["duration"], block)
+        spots = _safe_find(FIELD_RE["spots"], block)
+
+        record = EventRecord(
+            event_name=event_name,
+            event_type=event_type,
+            event_type_raw=event_type_raw,
+            source=source,
+            city=city,
+            state=state,
+            age_min=age_min,
+            age_max=age_max,
+            age_contains=age_contains,
+            intensity=intensity,
+            instructor=instructor,
+            date_range=date_range,
+            time_slots=time_slots,
+            duration=duration,
+            spots=spots,
+            center_name=center_name,
+            center_type=center_type,
+            page_content=block,
+        )
+        records.append(record)
+
+    return records
 

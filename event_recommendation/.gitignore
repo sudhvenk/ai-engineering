@@ -54,6 +54,9 @@ rag_chroma/
 **/rag_chroma/
 **/vector_db/
 *.sqlite3
+
+# SQL Database
+events.db
 *.db
 
 # Testing
@@ -85,4 +88,8 @@ Thumbs.db
 # Project specific
 helper/rag_chroma/
 helper/vector_db/
+
+# Notebook outputs
+notebooks/analysis_output/
+*.ipynb_checkpoints
 

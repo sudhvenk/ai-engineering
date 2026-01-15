@@ -8,7 +8,7 @@ High-intensity circuit training combining cardio and strength.
 **Benefits:** Strength, endurance, calorie burn  
 **Ailments:** Metabolic slowdown, muscle loss  
 
-## CARDIO STRENGTH / CIRCUITS
+## CARDIO STRENGTH
 Balanced cardio and resistance training in timed formats.  
 **Intensity:** Moderate | **Session:** 45–60 min | **Frequency:** 3–5/week  
 **Benefits:** Heart health, functional strength  
@@ -24,7 +24,7 @@ Indoor cycling simulating hills and endurance rides.
 **Intensity:** Moderate–High | **Session:** 45–60 min | **Frequency:** 2–4/week  
 **Benefits:** Cardio capacity, leg strength  
 
-## SENIOR CIRCUITS / SILVERSNEAKERS®
+## SENIOR CIRCUITS
 Functional strength training designed for older adults.  
 **Intensity:** Low–Moderate | **Session:** 45–60 min | **Frequency:** 2–5/week  
 **Benefits:** Balance, daily movement safety  

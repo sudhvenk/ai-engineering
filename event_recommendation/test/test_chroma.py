@@ -64,9 +64,22 @@ def test_build_vectorstores(tmp_path):
     events_files, activity_files = load_documents(documents_path)
 
     if events_files and activity_files:
+        import groq
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+        groq_client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
+        model = "openai/gpt-oss-120b"
+        
         persist_dir = str(tmp_path / "test_chroma")
+        db_path = str(tmp_path / "test_events.db")
         stores = build_vectorstores(
-            events_files, activity_files, persist_dir=persist_dir
+            events_files, 
+            activity_files, 
+            groq_client=groq_client,
+            model=model,
+            persist_dir=persist_dir,
+            db_path=db_path
         )
 
         assert isinstance(stores, RagStores)

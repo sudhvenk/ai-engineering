@@ -16,10 +16,12 @@ from .profile import (
 
 import groq
 import os
-
-# Initialize Groq client
-groq_client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
-OPENSOURCE_OSS_MODEL = "openai/gpt-oss-120b"
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 ANSWER_SYSTEM_PROMPT = """You are an Activity Recommendation Assistant. 
 
@@ -36,6 +38,7 @@ You must follow these rules:
    - Typical intensity level 
    - Typical session length 
    - Recommended weekly frequency 
+   - average user sentiment and rating of the activity
    - Why it fits the user's preferences 
 7. If multiple activities fit, rank them from best to least suitable. 
 8. If nothing fits well, explain why and suggest alternatives. 
@@ -44,10 +47,46 @@ Your tone should be friendly, practical, and encouraging.
 """
 
 
-def llm_call_answer(system_prompt: str, user_prompt: str) -> str:
-    """Call LLM to generate answer."""
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type((
+        groq.RateLimitError,          # Rate limit exceeded
+        groq.APIConnectionError,       # Connection issues
+        groq.APITimeoutError,          # Request timeout
+        groq.InternalServerError,      # Server errors (5xx)
+        ConnectionError,               # Python connection errors
+        TimeoutError,                  # Python timeout errors
+    )),
+    reraise=True,
+)
+def llm_call_answer(
+    system_prompt: str, 
+    user_prompt: str,
+    groq_client: groq.Groq,
+    model: str = "openai/gpt-oss-120b"
+) -> str:
+    """
+    Call LLM to generate answer.
+    
+    Args:
+        system_prompt: System prompt for the LLM
+        user_prompt: User prompt for the LLM
+        groq_client: Groq client instance
+        model: Model name to use (default: "openai/gpt-oss-120b")
+        
+    Returns:
+        Response text from LLM
+        
+    Raises:
+        groq.RateLimitError: If rate limit is exceeded after retries
+        groq.APIConnectionError: If connection fails after retries
+        groq.APITimeoutError: If request times out after retries
+        groq.InternalServerError: If server error occurs after retries
+        groq.APIError: If API returns a non-retryable error
+    """
     resp = groq_client.chat.completions.create(
-        model=OPENSOURCE_OSS_MODEL,
+        model=model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -92,7 +131,13 @@ def convert_gradio_history(history):
 _user_profile_state = {}
 
 
-def chat(message: str, history, stores: RagStores):
+def chat(
+    message: str, 
+    history, 
+    stores: RagStores,
+    groq_client: groq.Groq,
+    model: str = "openai/gpt-oss-120b"
+):
     """
     Chat function compatible with Gradio 6.x ChatInterface.
     
@@ -100,6 +145,8 @@ def chat(message: str, history, stores: RagStores):
         message: Current user message
         history: Gradio history format
         stores: RagStores containing vector stores
+        groq_client: Groq client instance
+        model: Model name to use
         
     Returns:
         Assistant response string
@@ -122,7 +169,7 @@ def chat(message: str, history, stores: RagStores):
     )
 
     try:
-        extracted_raw = llm_call_profile(PROFILE_SYSTEM_PROMPT, profile_prompt)
+        extracted_raw = llm_call_profile(PROFILE_SYSTEM_PROMPT, profile_prompt, groq_client=groq_client, model=model)
         extracted = json.loads(extracted_raw)
         print(f"Extracted profile: {extracted}")
         profile = merge_profiles(profile, extracted)
@@ -170,7 +217,7 @@ def chat(message: str, history, stores: RagStores):
     - If the knowledge is insufficient, say what is missing. 
     """.strip()
 
-    assistant_text = llm_call_answer(ANSWER_SYSTEM_PROMPT, answer_user_prompt)
+    assistant_text = llm_call_answer(ANSWER_SYSTEM_PROMPT, answer_user_prompt, groq_client=groq_client, model=model)
 
     # Update global profile state
     _user_profile_state.update(profile)
@@ -179,11 +226,18 @@ def chat(message: str, history, stores: RagStores):
     return assistant_text
 
 
-def launch_chat_interface(stores: RagStores):
-    """Launch Gradio chat interface."""
-    # Create a wrapper function that includes stores
+def launch_chat_interface(stores: RagStores, groq_client: groq.Groq, model: str = "openai/gpt-oss-120b"):
+    """
+    Launch Gradio chat interface.
+    
+    Args:
+        stores: RagStores containing vector stores
+        groq_client: Groq client instance
+        model: Model name to use
+    """
+    # Create a wrapper function that includes stores and client
     def chat_wrapper(message: str, history):
-        return chat(message, history, stores)
+        return chat(message, history, stores, groq_client=groq_client, model=model)
 
     demo = gr.ChatInterface(chat_wrapper)
     demo.launch()

@@ -89,9 +89,22 @@ def test_retrieve_activity_types():
     events_files, activity_files = load_documents(documents_path)
 
     if events_files and activity_files:
+        import groq
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+        groq_client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
+        model = "openai/gpt-oss-120b"
+        
         with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "test_events.db")
             stores = build_vectorstores(
-                events_files, activity_files, persist_dir=tmpdir
+                events_files, 
+                activity_files, 
+                groq_client=groq_client,
+                model=model,
+                persist_dir=tmpdir,
+                db_path=db_path
             )
 
             results = retrieve_activity_types(
